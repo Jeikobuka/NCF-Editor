@@ -1,4 +1,5 @@
 {
  "defaultOpenDirectory": "/",
- "openedFiles": []
+ "openFiles": [],
+ "openFilenames": []
 }
