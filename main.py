@@ -52,6 +52,7 @@ def removeFileFromNotebook(nbFile):
     generateFiles(saveData["openFiles"])
 
 def generateFiles(files):
+    global notebook
     for file in files:
         try:
             notebook.add(os.path.basename(file))
@@ -68,8 +69,10 @@ def generateFiles(files):
     try:
         saveData = getSaveData()
         notebook.set(saveData["openFilenames"][-1])
-    except:
-        pass
+        onTabChange()
+        root.bind("<Button-1>", onTabChange)
+    except Exception as e:
+        print(e)
 
 def browseFiles():
     global openedFiles
@@ -101,6 +104,9 @@ def saveFile(e=None):
             f.write(content)
     except:
         pass
+
+def onTabChange(e = None):
+    root.title(f"NCF Editor - {notebook.get()}")
 
 ctk.set_default_color_theme("green")
 ctk.set_appearance_mode("dark")
