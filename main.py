@@ -1,11 +1,27 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog
+from tkinter.filedialog import asksaveasfile
+
+import importlib
 
 import os, json
 global saveData
+WINDOW_TITLE = "NCF Editor"
 SAVE_FILE = "data/save.json"
+SCRIPTS_FOLDER = "scripts/"
 FILE_IS_SAVED = True
+
+choseScript = "Fanuc Lathe"
+
+def getScripts():
+    scripts = os.listdir(SCRIPTS_FOLDER)
+    return scripts
+
+def passThroughScript(choseScript: str, content: str):
+    convContent = importlib.import_module("scripts."+choseScript+".script").convertGCodes(content, SCRIPTS_FOLDER+choseScript)
+    return convContent
+print(passThroughScript(choseScript, content="GZsmthelx0df0\nG32\nG50\nG80\nGZ\nG50"))
 
 def getSaveData():
     with open(SAVE_FILE, 'r') as f:
@@ -30,15 +46,14 @@ def compareFiles(event:tk.Event=None) -> None:
         origContent = f.read().strip()
     if content != origContent and FILE_IS_SAVED:
         FILE_IS_SAVED = False
-        root.title(f"NCF Editor - {notebook.get()}*")
+        root.title(f"{WINDOW_TITLE} - {notebook.get()}*")
         notebook.configure(state=tk.DISABLED)
     elif content == origContent and not FILE_IS_SAVED:
         FILE_IS_SAVED = True
         notebook.configure(state=tk.NORMAL)
-        root.title(f"NCF Editor - {notebook.get()}")
+        root.title(f"{WINDOW_TITLE} - {notebook.get()}")
         
 def removeFileFromNotebook(nbFile):
-    global openedFiles
     try:
         notebook.delete(nbFile)
         saveData = getSaveData()
@@ -75,9 +90,9 @@ def generateFiles(files):
         print(e)
 
 def browseFiles():
-    global openedFiles
     startDir = getStartDir()
-    filename = filedialog.askopenfilename(initialdir = startDir,title = "Select a File", filetypes = (("All Files","*.*"),("NCF Files","*.NCF*"))) 
+    filename = filedialog.askopenfilename(initialdir = startDir,title = "Select a File",
+    defaultextension=".NCF",filetypes=[("All Files","*.*"),("NC Output File","*.NCF"),("Text Documents","*.txt")])
     saveData = getSaveData()
     if filename in saveData["openFiles"] or filename.strip() == "":
         return
@@ -89,11 +104,15 @@ def browseFiles():
     saveData = getSaveData()
     generateFiles(saveData["openFiles"])
 
+def saveAsFile():
+    f = asksaveasfile(initialfile = 'Untitled.NCF',
+    defaultextension=".NCF",filetypes=[("All Files","*.*"),("NC Output File","*.NCF"),("Text Documents","*.txt")])
+
 def saveFile(e=None):
     global FILE_IS_SAVED
     if not FILE_IS_SAVED:
         FILE_IS_SAVED = True
-        root.title(f"NCF Editor - {notebook.get()}")
+        root.title(f"{WINDOW_TITLE} - {notebook.get()}")
         notebook.configure(state=tk.NORMAL)
     saveData = getSaveData()
     try:
@@ -106,7 +125,7 @@ def saveFile(e=None):
         pass
 
 def onTabChange(e = None):
-    root.title(f"NCF Editor - {notebook.get()}")
+    root.title(f"{WINDOW_TITLE} - {notebook.get()}")
 
 ctk.set_default_color_theme("green")
 ctk.set_appearance_mode("dark")
@@ -123,6 +142,7 @@ fileMenu.add_command(label="New")
 fileMenu.add_command(label="Open", command=browseFiles)
 fileMenu.add_command(label="Save", command=saveFile)
 root.bind('<Control-s>', saveFile)
+fileMenu.add_command(label="Save As...", command=saveAsFile)
 fileMenu.add_separator()
 fileMenu.add_command(label="Exit", command=root.quit)
 editMenu = tk.Menu(menubar, tearoff=0)
