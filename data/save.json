@@ -1,5 +1,11 @@
 {
- "defaultOpenDirectory": "/",
- "openFiles": [],
- "openFilenames": []
+ "openFiles": [
+ ],
+ "openFilenames": [
+ ],
+ "defaultOpenDirectory": "data/tmp",
+ "darkmode": true,
+ "--COMMENT-- ": "^ App needs a restart if darkmode is changed (true/false)",
+ "scripts_folder": "scripts/",
+ "--COMMENT-- ^ scripts/script_name/script.py will be used as a parser that every file you open will go through to convert the text to 'x' (whatever you want)": "(For ex. changing every '123' to '321') This is not implemented so you don't have to worry about it."
 }
