@@ -3,7 +3,7 @@
  ],
  "openFilenames": [
  ],
- "defaultOpenDirectory": "data/tmp",
+ "defaultOpenDirectory": "/",
  "darkmode": true,
  "--COMMENT-- ": "^ App needs a restart if darkmode is changed (true/false)",
  "scripts_folder": "scripts/",
