@@ -4,7 +4,7 @@ from tkinter import filedialog
 from tkinter.filedialog import asksaveasfile
 from PIL import Image
 
-import re, os, json, importlib
+import os, json, importlib
 # GETTERS AND SETTERS
 def getScripts():
     saveData = getSaveData()
