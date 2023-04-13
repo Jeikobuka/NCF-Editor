@@ -8,7 +8,7 @@ import os, json, importlib
 # GETTERS AND SETTERS
 def getScripts():
     saveData = getSaveData()
-    scripts = os.listdir(saveData["scripts_folder"])
+    scripts = os.listdir(saveData["scriptsFolder"])
     return scripts
 def getSaveData():
     with open(SAVE_FILE, 'r') as f:
@@ -34,9 +34,12 @@ def setTitleAndNotebookState():
     except Exception as e:
         print(f"Set Title and Notebook State: {e}")
 
-def passThroughScript(choseScript: str, content: str):
+def convertTextboxUsingScript(chosenScript: str, content: str):
     saveData = getSaveData()
-    convContent = importlib.import_module("scripts."+choseScript+".script").convertGCodes(content, saveData["scripts_folder"]+choseScript)
+    convContent = importlib.import_module("scripts."+chosenScript+".script").main(content, saveData["scriptsFolder"]+chosenScript)
+    notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"].delete(0.0, tk.END)
+    notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"].insert(0.0, convContent)
+    compareFiles()
     return convContent
 
 # BUTTONS - COMMANDS
@@ -128,7 +131,7 @@ def addTab(filename):
     saveData = getSaveData()
     generateFiles(saveData["openFiles"])
 
-def browseFiles():
+def browseFiles(e=None):
     startDir = getStartDir()
     filename = filedialog.askopenfilename(initialdir = startDir,title = "Select a File",
     defaultextension=".txt",filetypes=[("All Files","*.*"),("NC Output File","*.NCF"),("Text Documents","*.txt")])
@@ -138,16 +141,14 @@ def browseFiles():
     addTab(filename)
 
 # EVENTS
-def auto_indent(event):
-    widget = event.widget
-    widget.insert("insert", " "*4)
-    return "break"
-
 def newFile():
     with open(TEMP_TEXT_FILE, 'w') as f:  
         f.write("")
     addTab(TEMP_TEXT_FILE)
-
+def auto_indent(event):
+    widget = event.widget
+    widget.insert("insert", " "*4)
+    return "break"
 def saveAsFile():
     global FILE_IS_SAVED
     f = asksaveasfile(initialfile = 'Untitled.txt',
@@ -162,7 +163,6 @@ def saveAsFile():
         pass
     removeFileFromNotebook(notebook.get())
     addTab(f.name)
-
 def saveFile(e=None):
     global FILE_IS_SAVED
     saveData = getSaveData()
@@ -181,18 +181,67 @@ def saveFile(e=None):
         except Exception as e:
             print(e)
             pass
-
 def onTabChange(e = None):
     setTitleAndNotebookState()
+def runFileAsPythonCode(e = None):
+    exec(getCurrTextboxContent())
 
+def saveSettings():
+    global saveData
+    saveData = getSaveData()
+    with open(SAVE_FILE, 'w') as f:
+        saveData["defaultOpenDirectory"] = '/'
+        saveData["darkmode"] = darkModeVar.get()
+        saveData["themecolor"] = themeColorVar.get()
+        saveData["chosenScript"] = chosenScriptVar.get()
+        json.dump(saveData, f, indent=1)
+    saveData = getSaveData()
+
+
+def openSettingsWindow():
+    global darkModeVar, themeColorVar, chosenScriptVar
+    saveData = getSaveData()
+    darkModeVar = tk.StringVar(value=saveData["darkmode"])
+    themeColorVar = tk.StringVar(value=saveData["themecolor"])
+    chosenScriptVar = tk.StringVar(value=saveData["chosenScript"])
+    settingsWin = ctk.CTk()
+    settingsWin.title("NCF Editor - Settings")
+    settingsWin.geometry("500x600")
+    settingsTabview = ctk.CTkTabview(settingsWin)
+    settingsTabview.add("Settings")
+    settingsTabview.add("Theme")
+    settingsTabview.pack(padx=20, pady=20, expand=True, fill=tk.BOTH)
+    settingsTabview._segmented_button.grid(row=0, column=0, sticky="W")
+    # SETTINGS
+    chosenScriptLabel = ctk.CTkLabel(master=settingsTabview.tab("Settings"), text="Chosen Script:", font=("Roboto", 15, "bold")).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+    chosenScriptDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Settings"), font=("Roboto", 15, "bold"), variable=chosenScriptVar, values=getScripts(), width=30)
+    chosenScriptDropdown.grid(row=0,column=1, pady=10, sticky="w")
+    chosenScriptDropdown.set(chosenScriptVar.get())
+
+    #THEME
+    darkModeLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Appearance Mode:", font=("Roboto", 15, "bold")).grid(row=0, column=0, padx=10, sticky="w")
+    darkModeCheckbox = ctk.CTkCheckBox(master=settingsTabview.tab("Theme"), text="", variable=darkModeVar, onvalue="dark", offvalue="light")
+    darkModeCheckbox.grid(row=0, column=1, pady=10, sticky="w")
+    darkModeCheckbox.select() if darkModeVar.get()=="dark" else darkModeCheckbox.deselect()
+    themeColorLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Color Theme:", font=("Roboto", 15, "bold")).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+    themeColorDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Theme"), font=("Roboto", 15, "bold"), variable=themeColorVar, values=["green", "blue", "dark-blue"], width=30)
+    themeColorDropdown.grid(row=1,column=1, pady=10, sticky="w")
+    themeColorDropdown.set(themeColorVar.get())
+
+    saveButton = ctk.CTkButton(master=settingsTabview, text="Save", command=saveSettings)
+    saveButton.grid(row=0, column=0,sticky="ne")
+
+    settingsWin.mainloop()
 
 WINDOW_TITLE = "NCF Editor"
 SAVE_FILE = "data/save.json"
 TEMP_TEXT_FILE = "data/tmp/temp.txt"
 FILE_IS_SAVED = True
 saveData = getSaveData()
-ctk.set_default_color_theme("green")
-ctk.set_appearance_mode("dark" if saveData["darkmode"] else "light")
+chosenScript = saveData["chosenScript"]
+
+ctk.set_default_color_theme(saveData["themecolor"])
+ctk.set_appearance_mode(saveData["darkmode"])
 root = ctk.CTk()
 root.title("NCF Editor")
 root.geometry("1500x800")
@@ -203,16 +252,20 @@ root.grid_columnconfigure(0, weight=1)
 menubar = tk.Menu(root)
 fileMenu = tk.Menu(menubar, tearoff=0)
 fileMenu.add_command(label="New", command=newFile)
-fileMenu.add_command(label="Open", command=browseFiles)
-fileMenu.add_command(label="Save", command=saveFile)
+fileMenu.add_command(label="Open"+" "*20+"Ctrl+O", command=browseFiles)
+root.bind('<Control-o>', browseFiles)
+fileMenu.add_command(label="Save"+" "*22+"Ctrl+S", command=saveFile)
 root.bind('<Control-s>', saveFile)
 fileMenu.add_command(label="Save As...", command=saveAsFile)
 fileMenu.add_separator()
 fileMenu.add_command(label="Exit", command=root.quit)
 editMenu = tk.Menu(menubar, tearoff=0)
-editMenu.add_command(label="Preferences")
+editMenu.add_command(label="Preferences", command=openSettingsWindow)
 transmissionMenu = tk.Menu(menubar, tearoff=0)
 transmissionMenu.add_command(label="Send")
+transmissionMenu.add_command(label="Run"+" "*20+"Ctrl+R", command= runFileAsPythonCode)
+root.bind('<Control-r>', runFileAsPythonCode)
+transmissionMenu.add_command(label="Convert Using Script", command= lambda: convertTextboxUsingScript(chosenScript, getCurrTextboxContent()))
 helpMenu = tk.Menu(menubar, tearoff=0)
 helpMenu.add_command(label="Help Index")
 helpMenu.add_command(label="About...")
