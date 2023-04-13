@@ -4,8 +4,11 @@
  "openFilenames": [
  ],
  "defaultOpenDirectory": "/",
- "darkmode": true,
- "--COMMENT-- ": "^ App needs a restart if darkmode is changed (true/false)",
- "scripts_folder": "scripts/",
- "--COMMENT-- ^ scripts/script_name/script.py will be used as a parser that every file you open will go through to convert the text to 'x' (whatever you want)": "(For ex. changing every '123' to '321') This is not implemented so you don't have to worry about it."
+ "themecolor": "blue",
+ "-COMMENT ": "^ App needs a restart if theme is changed (green/blue/dark-blue) ... or a path to your own color theme",
+ "darkmode": "dark",
+ "--COMMENT": "^ App needs a restart if darkmode is changed (dark/light)",
+ "scriptsFolder": "scripts/",
+ "---COMMENT ^ scripts/script_name/script.py will be used as a parser that every file you open will go through to convert the text to 'x' (whatever you want)": "(For ex. changing every '123' to '321') This is not implemented so you don't have to worry about it.",
+ "chosenScript": "Doosan"
 }
