@@ -199,11 +199,23 @@ def saveSettings():
 
 
 def openSettingsWindow():
-    global darkModeVar, themeColorVar, chosenScriptVar
+    global settingsWin, darkModeVar, themeColorVar, chosenScriptVar
     saveData = getSaveData()
     darkModeVar = tk.StringVar(value=saveData["darkmode"])
     themeColorVar = tk.StringVar(value=saveData["themecolor"])
     chosenScriptVar = tk.StringVar(value=saveData["chosenScript"])
+    def _onSettingChange(e = None):
+        saveData = getSaveData()
+        if darkModeVar.get() != saveData["darkmode"] or themeColorVar.get() != saveData["themecolor"] or chosenScriptVar.get() != saveData["chosenScript"]:
+            settingsWin.title("NCF Editor - *Settings")
+        pass
+    def _save():
+        saveSettings()
+        saveData = getSaveData()
+        darkModeVar.set(saveData["darkmode"])
+        themeColorVar.set(saveData["themecolor"])
+        chosenScriptVar.set(saveData["chosenScript"])
+        settingsWin.title("NCF Editor - Settings")
     settingsWin = ctk.CTk()
     settingsWin.title("NCF Editor - Settings")
     settingsWin.geometry("500x600")
@@ -217,7 +229,6 @@ def openSettingsWindow():
     chosenScriptDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Settings"), font=("Roboto", 15, "bold"), variable=chosenScriptVar, values=getScripts(), width=30)
     chosenScriptDropdown.grid(row=0,column=1, pady=10, sticky="w")
     chosenScriptDropdown.set(chosenScriptVar.get())
-
     #THEME
     darkModeLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Appearance Mode:", font=("Roboto", 15, "bold")).grid(row=0, column=0, padx=10, sticky="w")
     darkModeCheckbox = ctk.CTkCheckBox(master=settingsTabview.tab("Theme"), text="", variable=darkModeVar, onvalue="dark", offvalue="light")
@@ -228,9 +239,9 @@ def openSettingsWindow():
     themeColorDropdown.grid(row=1,column=1, pady=10, sticky="w")
     themeColorDropdown.set(themeColorVar.get())
 
-    saveButton = ctk.CTkButton(master=settingsTabview, text="Save", command=saveSettings)
+    saveButton = ctk.CTkButton(master=settingsTabview, text="Save", command=_save)
     saveButton.grid(row=0, column=0,sticky="ne")
-
+    settingsWin.bind("<Button-1>", _onSettingChange)
     settingsWin.mainloop()
 
 WINDOW_TITLE = "NCF Editor"
