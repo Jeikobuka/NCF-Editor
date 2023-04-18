@@ -4,7 +4,7 @@ from tkinter import filedialog
 from tkinter.filedialog import asksaveasfile
 from PIL import Image
 
-import os, json, importlib
+import sys, os, json, importlib, webbrowser
 # GETTERS AND SETTERS
 def getScripts():
     saveData = getSaveData()
@@ -34,9 +34,9 @@ def setTitleAndNotebookState():
     except Exception as e:
         print(f"Set Title and Notebook State: {e}")
 
-def convertTextboxUsingScript(chosenScript: str, content: str):
+def convertTextboxUsingScript(content: str):
     saveData = getSaveData()
-    convContent = importlib.import_module("scripts."+chosenScript+".script").main(content, saveData["scriptsFolder"]+chosenScript)
+    convContent = importlib.import_module("scripts."+saveData["chosenScript"]+".script").main(content, saveData["scriptsFolder"]+saveData["chosenScript"])
     notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"].delete(0.0, tk.END)
     notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"].insert(0.0, convContent)
     compareFiles()
@@ -99,9 +99,10 @@ def removeFileFromNotebook(nbFile):
 def generateFiles(files):
     global notebook
     for file in files:
+        print(notebook.get())
         try:
             notebook.add(os.path.basename(file))
-            textbox = ctk.CTkTextbox(master=notebook.tab(os.path.basename(file)), font=("Roboto", 20),width=400, corner_radius=1, undo=True)
+            textbox = ctk.CTkTextbox(master=notebook.tab(os.path.basename(file)), font=("Roboto", 20),width=400, undo=True)
             textbox.bind("<KeyRelease>", compareFiles)
             textbox.bind("<Tab>", auto_indent)
             textbox.pack(padx=20, pady=20, expand=True, fill=tk.BOTH)
@@ -123,11 +124,12 @@ def generateFiles(files):
 
 def addTab(filename):
     saveData = getSaveData()
-    with open(SAVE_FILE, "w") as f:
-        saveData["openFiles"].append(filename)
-        saveData["openFilenames"].append(os.path.basename(filename))
-        saveData["defaultOpenDirectory"] = os.path.dirname(filename)
-        json.dump(saveData, f, indent=1)
+    if os.path.basename(filename) not in saveData["openFilenames"]:
+        with open(SAVE_FILE, "w") as f:
+            saveData["openFiles"].append(filename)
+            saveData["openFilenames"].append(os.path.basename(filename))
+            saveData["defaultOpenDirectory"] = os.path.dirname(filename)
+            json.dump(saveData, f, indent=1)
     saveData = getSaveData()
     generateFiles(saveData["openFiles"])
 
@@ -201,14 +203,18 @@ def saveSettings():
 def openSettingsWindow():
     global settingsWin, darkModeVar, themeColorVar, chosenScriptVar
     saveData = getSaveData()
-    darkModeVar = tk.StringVar(value=saveData["darkmode"])
-    themeColorVar = tk.StringVar(value=saveData["themecolor"])
-    chosenScriptVar = tk.StringVar(value=saveData["chosenScript"])
+    darkModeVar, themeColorVar, chosenScriptVar = tk.StringVar(), tk.StringVar(), tk.StringVar()
+    saveVarStrings = ["darkmode", "themecolor", "chosenScript"]
+    saveVars = [darkModeVar, themeColorVar, chosenScriptVar]
+    for var in saveVars:
+        var.set(value=saveData[saveVarStrings[saveVars.index(var)]])
     def _onSettingChange(e = None):
         saveData = getSaveData()
-        if darkModeVar.get() != saveData["darkmode"] or themeColorVar.get() != saveData["themecolor"] or chosenScriptVar.get() != saveData["chosenScript"]:
-            settingsWin.title("NCF Editor - *Settings")
-        pass
+        for var in saveVarStrings:
+            if saveVars[saveVarStrings.index(var)].get() != saveData[var]:
+                settingsWin.title("NCF Editor - *Settings")
+                break
+
     def _save():
         saveSettings()
         saveData = getSaveData()
@@ -226,16 +232,16 @@ def openSettingsWindow():
     settingsTabview._segmented_button.grid(row=0, column=0, sticky="W")
     # SETTINGS
     chosenScriptLabel = ctk.CTkLabel(master=settingsTabview.tab("Settings"), text="Chosen Script:", font=("Roboto", 15, "bold")).grid(row=0, column=0, padx=10, pady=10, sticky="w")
-    chosenScriptDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Settings"), font=("Roboto", 15, "bold"), variable=chosenScriptVar, values=getScripts(), width=30)
+    chosenScriptDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Settings"), font=("Roboto", 15, "bold"), variable=chosenScriptVar, values=getScripts(), width=30, command=_onSettingChange)
     chosenScriptDropdown.grid(row=0,column=1, pady=10, sticky="w")
     chosenScriptDropdown.set(chosenScriptVar.get())
     #THEME
     darkModeLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Appearance Mode:", font=("Roboto", 15, "bold")).grid(row=0, column=0, padx=10, sticky="w")
-    darkModeCheckbox = ctk.CTkCheckBox(master=settingsTabview.tab("Theme"), text="", variable=darkModeVar, onvalue="dark", offvalue="light")
+    darkModeCheckbox = ctk.CTkCheckBox(master=settingsTabview.tab("Theme"), text="", variable=darkModeVar, onvalue="dark", offvalue="light", command=_onSettingChange)
     darkModeCheckbox.grid(row=0, column=1, pady=10, sticky="w")
     darkModeCheckbox.select() if darkModeVar.get()=="dark" else darkModeCheckbox.deselect()
     themeColorLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Color Theme:", font=("Roboto", 15, "bold")).grid(row=1, column=0, padx=10, pady=10, sticky="w")
-    themeColorDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Theme"), font=("Roboto", 15, "bold"), variable=themeColorVar, values=["green", "blue", "dark-blue"], width=30)
+    themeColorDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Theme"), font=("Roboto", 15, "bold"), variable=themeColorVar, values=["green", "blue", "dark-blue"], width=30, command=_onSettingChange)
     themeColorDropdown.grid(row=1,column=1, pady=10, sticky="w")
     themeColorDropdown.set(themeColorVar.get())
 
@@ -249,8 +255,12 @@ SAVE_FILE = "data/save.json"
 TEMP_TEXT_FILE = "data/tmp/temp.txt"
 FILE_IS_SAVED = True
 saveData = getSaveData()
-chosenScript = saveData["chosenScript"]
 
+try:
+    addTab(sys.argv[1])
+except:
+    print("Couldn't open file!")
+    pass
 ctk.set_default_color_theme(saveData["themecolor"])
 ctk.set_appearance_mode(saveData["darkmode"])
 root = ctk.CTk()
@@ -276,10 +286,10 @@ transmissionMenu = tk.Menu(menubar, tearoff=0)
 transmissionMenu.add_command(label="Send")
 transmissionMenu.add_command(label="Run"+" "*20+"Ctrl+R", command= runFileAsPythonCode)
 root.bind('<Control-r>', runFileAsPythonCode)
-transmissionMenu.add_command(label="Convert Using Script", command= lambda: convertTextboxUsingScript(chosenScript, getCurrTextboxContent()))
+transmissionMenu.add_command(label="Convert Using Script", command= lambda: convertTextboxUsingScript(getCurrTextboxContent()))
 helpMenu = tk.Menu(menubar, tearoff=0)
 helpMenu.add_command(label="Help Index")
-helpMenu.add_command(label="About...")
+helpMenu.add_command(label="About...", command= lambda: webbrowser.open("https://github.com/Jeikobuka/NCF-Editor"))
 menubar.add_cascade(label="File", menu=fileMenu)
 menubar.add_cascade(label="Edit", menu=editMenu)
 menubar.add_cascade(label="Transmission", menu=transmissionMenu)
