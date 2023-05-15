@@ -22,11 +22,11 @@ def getCurrTextboxContent():
     content = notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"].get(1.0, tk.END).strip()
     return content
 def setTitleAndNotebookState():
-    try:
-        if not FILE_IS_SAVED:
+    try: 
+        if not FILE_IS_SAVED and root.title != f"{WINDOW_TITLE} - *{notebook.get()}":
             root.title(f"{WINDOW_TITLE} - *{notebook.get()}")
             notebook.configure(state=tk.DISABLED)
-        elif FILE_IS_SAVED:
+        elif FILE_IS_SAVED and root.title != f"{WINDOW_TITLE} - {notebook.get()}":
             root.title(f"{WINDOW_TITLE} - {notebook.get()}")
             notebook.configure(state=tk.NORMAL)
         if notebook.get().strip() == "":
@@ -74,9 +74,10 @@ def compareFiles(event:tk.Event=None) -> None:
         origContent = f.read().strip()
     if content != origContent and FILE_IS_SAVED:
         FILE_IS_SAVED = False
+        setTitleAndNotebookState()
     elif content == origContent and not FILE_IS_SAVED:
         FILE_IS_SAVED = True
-    setTitleAndNotebookState()
+        setTitleAndNotebookState()
 
 def removeFileFromNotebook(nbFile):
     saveData = getSaveData()
@@ -102,10 +103,10 @@ def generateFiles(files):
         print(notebook.get())
         try:
             notebook.add(os.path.basename(file))
-            textbox = ctk.CTkTextbox(master=notebook.tab(os.path.basename(file)), font=("Roboto", 20),width=400, undo=True)
+            textbox = ctk.CTkTextbox(master=notebook.tab(os.path.basename(file)), font=("Roboto", 20), width=400, undo=True, wrap=tk.NONE)
             textbox.bind("<KeyRelease>", compareFiles)
             textbox.bind("<Tab>", auto_indent)
-            textbox.pack(padx=20, pady=20, expand=True, fill=tk.BOTH)
+            textbox.pack(padx=10, pady=10, expand=True, fill=tk.BOTH)
             with open(file, 'r') as f:
                 content = f.read()
             textbox.insert(tk.END, text=content)
@@ -132,6 +133,7 @@ def addTab(filename):
             json.dump(saveData, f, indent=1)
     saveData = getSaveData()
     generateFiles(saveData["openFiles"])
+    highlight()
 
 def browseFiles(e=None):
     startDir = getStartDir()
@@ -143,6 +145,20 @@ def browseFiles(e=None):
     addTab(filename)
 
 # EVENTS
+def highlight(e=None):
+    highlightWords = {} #{'G54': 'green'}
+    text = notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"]
+    for k,v in highlightWords.items():
+        startIndex = '1.0'
+        while True:
+            startIndex = text.search(k, startIndex, tk.END)
+            if startIndex:
+                endIndex = text.index('%s+%dc' % (startIndex, (len(k))))
+                text.tag_add(k, startIndex, endIndex)
+                text.tag_config(k, foreground=v)
+                startIndex = endIndex
+            else:
+                break
 def newFile():
     with open(TEMP_TEXT_FILE, 'w') as f:  
         f.write("")
@@ -168,7 +184,6 @@ def saveAsFile():
 def saveFile(e=None):
     global FILE_IS_SAVED
     saveData = getSaveData()
-    setTitleAndNotebookState()
     fn = saveData["openFilenames"]
     fp = saveData["openFiles"][fn.index(notebook.get())]
     if TEMP_TEXT_FILE in fp:
@@ -183,8 +198,14 @@ def saveFile(e=None):
         except Exception as e:
             print(e)
             pass
+        setTitleAndNotebookState()
 def onTabChange(e = None):
-    setTitleAndNotebookState()
+    try:
+        highlight()
+        setTitleAndNotebookState()
+    except ValueError:
+        print("No tabs found")
+        pass
 def runFileAsPythonCode(e = None):
     exec(getCurrTextboxContent())
 
@@ -202,6 +223,7 @@ def saveSettings():
 
 def openSettingsWindow():
     global settingsWin, darkModeVar, themeColorVar, chosenScriptVar
+    FONT = ("Roboto", 13, "bold")
     saveData = getSaveData()
     darkModeVar, themeColorVar, chosenScriptVar = tk.StringVar(), tk.StringVar(), tk.StringVar()
     saveVarStrings = ["darkmode", "themecolor", "chosenScript"]
@@ -231,21 +253,21 @@ def openSettingsWindow():
     settingsTabview.pack(padx=20, pady=20, expand=True, fill=tk.BOTH)
     settingsTabview._segmented_button.grid(row=0, column=0, sticky="W")
     # SETTINGS
-    chosenScriptLabel = ctk.CTkLabel(master=settingsTabview.tab("Settings"), text="Chosen Script:", font=("Roboto", 15, "bold")).grid(row=0, column=0, padx=10, pady=10, sticky="w")
-    chosenScriptDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Settings"), font=("Roboto", 15, "bold"), variable=chosenScriptVar, values=getScripts(), width=30, command=_onSettingChange)
+    chosenScriptLabel = ctk.CTkLabel(master=settingsTabview.tab("Settings"), text="Chosen Script:", font=FONT).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+    chosenScriptDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Settings"), font=FONT, variable=chosenScriptVar, values=getScripts(), width=30, command=_onSettingChange)
     chosenScriptDropdown.grid(row=0,column=1, pady=10, sticky="w")
     chosenScriptDropdown.set(chosenScriptVar.get())
     #THEME
-    darkModeLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Appearance Mode:", font=("Roboto", 15, "bold")).grid(row=0, column=0, padx=10, sticky="w")
-    darkModeCheckbox = ctk.CTkCheckBox(master=settingsTabview.tab("Theme"), text="", variable=darkModeVar, onvalue="dark", offvalue="light", command=_onSettingChange)
+    darkModeLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Appearance Mode:", font=FONT).grid(row=0, column=0, padx=10, sticky="w")
+    darkModeCheckbox = ctk.CTkCheckBox(master=settingsTabview.tab("Theme"), text="", font=FONT, variable=darkModeVar, onvalue="dark", offvalue="light", command=_onSettingChange)
     darkModeCheckbox.grid(row=0, column=1, pady=10, sticky="w")
     darkModeCheckbox.select() if darkModeVar.get()=="dark" else darkModeCheckbox.deselect()
-    themeColorLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Color Theme:", font=("Roboto", 15, "bold")).grid(row=1, column=0, padx=10, pady=10, sticky="w")
-    themeColorDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Theme"), font=("Roboto", 15, "bold"), variable=themeColorVar, values=["green", "blue", "dark-blue"], width=30, command=_onSettingChange)
+    themeColorLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Color Theme:", font=FONT).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+    themeColorDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Theme"), font=FONT, variable=themeColorVar, values=["green", "blue", "dark-blue"], width=30, command=_onSettingChange)
     themeColorDropdown.grid(row=1,column=1, pady=10, sticky="w")
     themeColorDropdown.set(themeColorVar.get())
 
-    saveButton = ctk.CTkButton(master=settingsTabview, text="Save", command=_save)
+    saveButton = ctk.CTkButton(master=settingsTabview, text="Save", font=FONT, width=20, command=_save)
     saveButton.grid(row=0, column=0,sticky="ne")
     settingsWin.bind("<Button-1>", _onSettingChange)
     settingsWin.mainloop()
@@ -256,11 +278,6 @@ TEMP_TEXT_FILE = "data/tmp/temp.txt"
 FILE_IS_SAVED = True
 saveData = getSaveData()
 
-try:
-    addTab(sys.argv[1])
-except:
-    print("Couldn't open file!")
-    pass
 ctk.set_default_color_theme(saveData["themecolor"])
 ctk.set_appearance_mode(saveData["darkmode"])
 root = ctk.CTk()
@@ -303,9 +320,12 @@ notebook = ctk.CTkTabview(root)
 closeImage = ctk.CTkImage(dark_image=Image.open("data/assets/close.png"), size=(12, 12))
 xButton = ctk.CTkButton(master=notebook, text="", image=closeImage, width=7, height=7, command= lambda: removeFileFromNotebook(notebook.get()))
 xButton.grid(row=0, column=0,sticky="ne")
+try:
+    addTab(sys.argv[1])
+except:
+    print("Couldn't open file!")
+    pass
 generateFiles(saveData["openFiles"])
 # FILE EDITOR ---------------------------------------------------------
 # ---------------------------------------------------------------------
-
-
 root.mainloop()
