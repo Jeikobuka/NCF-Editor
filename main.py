@@ -36,7 +36,7 @@ def setTitleAndNotebookState():
 
 def convertTextboxUsingScript(content: str):
     saveData = getSaveData()
-    convContent = importlib.import_module("scripts."+saveData["chosenScript"]+".script").main(content, saveData["scriptsFolder"]+saveData["chosenScript"])
+    convContent = importlib.import_module("scripts."+saveData["chosenScript"]+".script").main(content)
     notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"].delete(0.0, tk.END)
     notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"].insert(0.0, convContent)
     compareFiles()
@@ -136,13 +136,14 @@ def addTab(filename):
     highlight()
 
 def browseFiles(e=None):
-    startDir = getStartDir()
-    filename = filedialog.askopenfilename(initialdir = startDir,title = "Select a File",
-    defaultextension=".txt",filetypes=[("All Files","*.*"),("NC Output File","*.NCF"),("Text Documents","*.txt")])
-    saveData = getSaveData()
-    if filename in saveData["openFiles"] or filename.strip() == "":
-        return
-    addTab(filename)
+    if FILE_IS_SAVED:
+        startDir = getStartDir()
+        filename = filedialog.askopenfilename(initialdir = startDir,title = "Select a File",
+        defaultextension=".txt",filetypes=[("All Files","*.*"),("NC Output File","*.NCF"),("Text Documents","*.txt")])
+        saveData = getSaveData()
+        if filename in saveData["openFiles"] or filename.strip() == "":
+            return
+        addTab(filename)
 
 # EVENTS
 def highlight(e=None):
@@ -236,7 +237,6 @@ def openSettingsWindow():
             if saveVars[saveVarStrings.index(var)].get() != saveData[var]:
                 settingsWin.title("NCF Editor - *Settings")
                 break
-
     def _save():
         saveSettings()
         saveData = getSaveData()
@@ -246,7 +246,7 @@ def openSettingsWindow():
         settingsWin.title("NCF Editor - Settings")
     settingsWin = ctk.CTk()
     settingsWin.title("NCF Editor - Settings")
-    settingsWin.geometry("500x600")
+    settingsWin.geometry("300x450")
     settingsTabview = ctk.CTkTabview(settingsWin)
     settingsTabview.add("Settings")
     settingsTabview.add("Theme")
@@ -257,7 +257,7 @@ def openSettingsWindow():
     chosenScriptDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Settings"), font=FONT, variable=chosenScriptVar, values=getScripts(), width=30, command=_onSettingChange)
     chosenScriptDropdown.grid(row=0,column=1, pady=10, sticky="w")
     chosenScriptDropdown.set(chosenScriptVar.get())
-    #THEME
+    # THEME
     darkModeLabel = ctk.CTkLabel(master=settingsTabview.tab("Theme"), text="Appearance Mode:", font=FONT).grid(row=0, column=0, padx=10, sticky="w")
     darkModeCheckbox = ctk.CTkCheckBox(master=settingsTabview.tab("Theme"), text="", font=FONT, variable=darkModeVar, onvalue="dark", offvalue="light", command=_onSettingChange)
     darkModeCheckbox.grid(row=0, column=1, pady=10, sticky="w")
@@ -266,7 +266,7 @@ def openSettingsWindow():
     themeColorDropdown = ctk.CTkOptionMenu(master=settingsTabview.tab("Theme"), font=FONT, variable=themeColorVar, values=["green", "blue", "dark-blue"], width=30, command=_onSettingChange)
     themeColorDropdown.grid(row=1,column=1, pady=10, sticky="w")
     themeColorDropdown.set(themeColorVar.get())
-
+    # SAVE
     saveButton = ctk.CTkButton(master=settingsTabview, text="Save", font=FONT, width=20, command=_save)
     saveButton.grid(row=0, column=0,sticky="ne")
     settingsWin.bind("<Button-1>", _onSettingChange)
