@@ -1,10 +1,8 @@
 {
- "openFiles": [
- ],
- "openFilenames": [
- ],
- "defaultOpenDirectory": "/",
- "themecolor": "blue",
+ "openFiles": [],
+ "openFilenames": [],
+ "defaultOpenDirectory": "F:/Documents",
+ "themecolor": "green",
  "-COMMENT": "^ App needs a restart if theme is changed (green/blue/dark-blue) ... you can also add a path to your own color themee",
  "darkmode": "dark",
  "--COMMENT": "^ App needs a restart if darkmode is changed (dark/light)",

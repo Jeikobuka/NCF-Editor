@@ -119,6 +119,7 @@ def generateFiles(files):
         notebook.set(saveData["openFilenames"][-1])
         onTabChange()
         root.bind("<Button-1>", onTabChange)
+        # root.bind("<KeyPress>", highlight)
     except Exception as e:
         print(f"Generate Files Exception: {e}")
         root.title(f"{WINDOW_TITLE}")
@@ -147,7 +148,8 @@ def browseFiles(e=None):
 
 # EVENTS
 def highlight(e=None):
-    highlightWords = {} #{'G54': 'green'}
+    with open(SYNTAX_HIGHLIGHTING_FILE, 'r') as f:
+        highlightWords = json.load(f)
     text = notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"]
     for k,v in highlightWords.items():
         startIndex = '1.0'
@@ -202,7 +204,6 @@ def saveFile(e=None):
         setTitleAndNotebookState()
 def onTabChange(e = None):
     try:
-        highlight()
         setTitleAndNotebookState()
     except ValueError:
         print("No tabs found")
@@ -274,6 +275,7 @@ def openSettingsWindow():
 
 WINDOW_TITLE = "NCF Editor"
 SAVE_FILE = "data/save.json"
+SYNTAX_HIGHLIGHTING_FILE = "data/syntax_highlighting.json"
 TEMP_TEXT_FILE = "data/tmp/temp.txt"
 FILE_IS_SAVED = True
 saveData = getSaveData()
