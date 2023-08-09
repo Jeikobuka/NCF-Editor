@@ -3,8 +3,37 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter.filedialog import asksaveasfile
 from PIL import Image
+import sys, os, json, importlib, webbrowser, socket, threading
 
-import sys, os, json, importlib, webbrowser
+# LOCAL SERVER
+def start_server():
+    # Start a server socket to listen for messages from other instances
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind(('localhost', 12345))  # Choose an appropriate port
+    server_socket.listen(1)
+    while True:
+        client_socket, address = server_socket.accept()
+        file_path = client_socket.recv(1024).decode()
+        client_socket.close()
+        if os.path.exists(file_path):
+            addTab(file_path)  # Open the file in the current instance
+
+def send_to_existing_instance(file_path):
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect(('localhost', 12345))  # Same port as the server
+    client_socket.send(file_path.encode())
+    client_socket.close()
+
+def is_instance_running():
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        client_socket.connect(('localhost', 12345))
+        client_socket.close()
+        return True
+    except ConnectionRefusedError:
+        return False
+
+
 # GETTERS AND SETTERS
 def getScripts():
     saveData = getSaveData()
@@ -110,7 +139,7 @@ def generateFiles(files):
             with open(file, 'r') as f:
                 content = f.read()
             textbox.insert(tk.END, text=content)
-        except ValueError:
+        except (ValueError, IndexError):
             pass
     notebook.pack(padx=20, pady=20, expand=True, fill=tk.BOTH)
     notebook._segmented_button.grid(row=0, column=0, sticky="W")
@@ -119,7 +148,6 @@ def generateFiles(files):
         notebook.set(saveData["openFilenames"][-1])
         onTabChange()
         root.bind("<Button-1>", onTabChange)
-        # root.bind("<KeyPress>", highlight)
     except Exception as e:
         print(f"Generate Files Exception: {e}")
         root.title(f"{WINDOW_TITLE}")
@@ -134,7 +162,7 @@ def addTab(filename):
             json.dump(saveData, f, indent=1)
     saveData = getSaveData()
     generateFiles(saveData["openFiles"])
-    highlight()
+    #highlight()
 
 def browseFiles(e=None):
     if FILE_IS_SAVED:
@@ -148,8 +176,7 @@ def browseFiles(e=None):
 
 # EVENTS
 def highlight(e=None):
-    with open(SYNTAX_HIGHLIGHTING_FILE, 'r') as f:
-        highlightWords = json.load(f)
+    highlightWords = {} #{'G54': 'green'}
     text = notebook.tab(os.path.basename(notebook.get())).children["!ctktextbox"]
     for k,v in highlightWords.items():
         startIndex = '1.0'
@@ -204,6 +231,7 @@ def saveFile(e=None):
         setTitleAndNotebookState()
 def onTabChange(e = None):
     try:
+        highlight()
         setTitleAndNotebookState()
     except ValueError:
         print("No tabs found")
@@ -273,10 +301,14 @@ def openSettingsWindow():
     settingsWin.bind("<Button-1>", _onSettingChange)
     settingsWin.mainloop()
 
+if getattr(sys, 'frozen', False):
+    applicationPath = os.path.dirname(sys.executable)
+elif __file__:
+    applicationPath = os.path.dirname(__file__)
 WINDOW_TITLE = "NCF Editor"
-SAVE_FILE = "data/save.json"
-SYNTAX_HIGHLIGHTING_FILE = "data/syntax_highlighting.json"
-TEMP_TEXT_FILE = "data/tmp/temp.txt"
+SAVE_FILE = applicationPath+"\\data\\save.json"
+TEMP_TEXT_FILE = applicationPath+"\\data\\tmp\\temp.txt"
+ASSETS_folder = applicationPath+"\\data\\assets\\"
 FILE_IS_SAVED = True
 saveData = getSaveData()
 
@@ -319,15 +351,27 @@ root.config(menu=menubar)
 # FILE EDITOR ---------------------------------------------------------
 root.columnconfigure(0, weight=1)
 notebook = ctk.CTkTabview(root)
-closeImage = ctk.CTkImage(dark_image=Image.open("data/assets/close.png"), size=(12, 12))
+closeImage = ctk.CTkImage(dark_image=Image.open(ASSETS_folder+"close.png"), size=(12, 12))
 xButton = ctk.CTkButton(master=notebook, text="", image=closeImage, width=7, height=7, command= lambda: removeFileFromNotebook(notebook.get()))
 xButton.grid(row=0, column=0,sticky="ne")
-try:
-    addTab(sys.argv[1])
-except:
-    print("Couldn't open file!")
-    pass
-generateFiles(saveData["openFiles"])
-# FILE EDITOR ---------------------------------------------------------
-# ---------------------------------------------------------------------
-root.mainloop()
+
+if __name__ == "__main__":
+    if is_instance_running():
+        try:
+            send_to_existing_instance(sys.argv[1]) # sys.argv[1] is what gets passed through when you double click to open a file
+        except:
+            print("No File Specified...")
+            pass
+        sys.exit()
+    else:
+        server_thread = threading.Thread(target=start_server)
+        server_thread.daemon = True  # This allows the server thread to exit when the main program does
+        server_thread.start()
+        try:
+            addTab(sys.argv[1]) # sys.argv[1] is what gets passed through when you double click to open a file
+        except:
+            print("No File Specified...")
+    generateFiles(saveData["openFiles"])
+    # FILE EDITOR ---------------------------------------------------------
+    # ---------------------------------------------------------------------
+    root.mainloop()
